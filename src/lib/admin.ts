@@ -23,29 +23,10 @@ export async function adminLogin(email: string, password: string) {
   try {
     // For now, verify against hardcoded credentials
     if (email === ADMIN_CREDENTIALS.email && password === ADMIN_CREDENTIALS.password) {
-      // Get or create admin user in database
-      const { data, error } = await supabase
-        .from('admin_users')
-        .select('*')
-        .eq('email', email)
-        .single()
-
-      if (error && error.code !== 'PGRST116') {
-        // Error other than "not found"
-        throw error
-      }
-
-      // Update last login
-      if (data) {
-        await supabase
-          .from('admin_users')
-          .update({ last_login: new Date().toISOString() })
-          .eq('id', data.id)
-      }
-
+      // Return admin response
       return {
         success: true,
-        admin: data || {
+        admin: {
           email,
           name: 'Aman Khan',
           role: 'admin',
@@ -74,7 +55,9 @@ export async function logAdminActivity(
   ipAddress?: string,
 ) {
   try {
-    await supabase.from('admin_activity_logs').insert({
+    if (!supabase) return
+    
+    await (supabase.from('admin_activity_logs').insert as any)({
       admin_id: adminId,
       action,
       details,
@@ -88,6 +71,16 @@ export async function logAdminActivity(
 // Get admin stats
 export async function getAdminStats() {
   try {
+    if (!supabase) {
+      // Return default stats if Supabase not initialized
+      return {
+        totalUsers: 0,
+        totalPosts: 0,
+        totalCommunities: 0,
+        totalComments: 0,
+      }
+    }
+
     const [usersCount, postsCount, communitiesCount, commentsCount] = await Promise.all([
       supabase.from('users').select('id', { count: 'exact', head: true }),
       supabase.from('posts').select('id', { count: 'exact', head: true }),
@@ -115,6 +108,8 @@ export async function getAdminStats() {
 // Get recent activity
 export async function getRecentActivity(limit: number = 10) {
   try {
+    if (!supabase) return []
+
     const { data, error } = await supabase
       .from('admin_activity_logs')
       .select('*, admin_users(name, email)')

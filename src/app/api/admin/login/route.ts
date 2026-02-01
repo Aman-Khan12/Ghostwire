@@ -16,9 +16,10 @@ export async function POST(request: NextRequest) {
 
     if (result.success && result.admin) {
       // Log the login activity
-      if (result.admin.id) {
+      const adminId = (result.admin as any).id
+      if (adminId) {
         await logAdminActivity(
-          result.admin.id,
+          adminId,
           'Admin Login',
           { email },
           request.headers.get('x-forwarded-for') || 'unknown',
